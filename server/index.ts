@@ -235,7 +235,7 @@ if (process.env.NODE_ENV === 'production') {
   const __dirname = path.dirname(fileURLToPath(import.meta.url))
   const DIST = path.resolve(__dirname, '../dist')
   app.use(express.static(DIST))
-  app.get('*', (req, res) => {
+  app.use((req, res) => {
     if (req.path.startsWith('/api/')) { res.status(404).json({ error: 'Not found' }); return }
     res.sendFile(path.join(DIST, 'index.html'))
   })
