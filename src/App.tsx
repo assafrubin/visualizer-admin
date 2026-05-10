@@ -102,6 +102,7 @@ function MerchantsPanel({ }: object) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [toggling, setToggling] = useState<Set<string>>(new Set())
+  const [deleting, setDeleting] = useState<string | null>(null)
   const [showAdd, setShowAdd] = useState(false)
   const [addDomain, setAddDomain] = useState('')
   const [addName, setAddName] = useState('')
@@ -169,6 +170,20 @@ function MerchantsPanel({ }: object) {
     }
   }
 
+  async function confirmDelete(merchant: Merchant) {
+    if (!window.confirm(`Delete "${merchant.shopName ?? merchant.shopDomain}"?\n\nThis removes all their data and immediately disables the widget on their store.`)) return
+    setDeleting(merchant.shopDomain)
+    try {
+      const res = await fetch(`/api/merchants/${encodeURIComponent(merchant.shopDomain)}`, { method: 'DELETE' })
+      if (!res.ok) { setError('Failed to delete merchant'); return }
+      setMerchants(prev => prev.filter(m => m.shopDomain !== merchant.shopDomain))
+    } catch {
+      setError('Could not reach server')
+    } finally {
+      setDeleting(null)
+    }
+  }
+
   return (
     <div>
       <div className="page-title-row">
@@ -232,6 +247,7 @@ function MerchantsPanel({ }: object) {
                 <th>Collections</th>
                 <th>Installed</th>
                 <th>Widget</th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
@@ -275,6 +291,16 @@ function MerchantsPanel({ }: object) {
                       />
                       <span className="toggle-track" />
                     </label>
+                  </td>
+                  <td>
+                    <button
+                      className="btn-outline"
+                      style={{ fontSize: 12, padding: '3px 10px', color: 'var(--color-error, #e53e3e)' }}
+                      disabled={deleting === m.shopDomain}
+                      onClick={() => confirmDelete(m)}
+                    >
+                      {deleting === m.shopDomain ? '…' : 'Delete'}
+                    </button>
                   </td>
                 </tr>
               ))}

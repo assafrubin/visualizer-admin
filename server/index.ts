@@ -77,6 +77,19 @@ app.post('/api/merchants', requireAuth, async (req, res) => {
   }
 })
 
+app.delete('/api/merchants/:shop', requireAuth, async (req, res) => {
+  const shop = req.params['shop'] as string
+  try {
+    const upstream = await fetch(`${BACKOFFICE_URL}/api/internal/merchants/${encodeURIComponent(shop)}`, {
+      method: 'DELETE',
+      headers: backofficeHeaders(),
+    })
+    res.status(upstream.status).json(await upstream.json())
+  } catch {
+    res.status(502).json({ error: 'Backoffice unavailable' })
+  }
+})
+
 app.patch('/api/merchants/:shop/active', requireAuth, async (req, res) => {
   const shop = req.params['shop'] as string
   const { active } = req.body as { active: boolean }
