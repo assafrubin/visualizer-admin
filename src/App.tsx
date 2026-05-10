@@ -7,6 +7,7 @@ interface Merchant {
   shopName?: string
   shopEmail?: string
   active: boolean
+  connected: boolean
   installedAt?: string
   enabledCollections: number
   totalCollections: number
@@ -227,6 +228,7 @@ function MerchantsPanel({ }: object) {
               <tr>
                 <th>Store</th>
                 <th>Domain</th>
+                <th>Status</th>
                 <th>Collections</th>
                 <th>Installed</th>
                 <th>Widget</th>
@@ -240,6 +242,20 @@ function MerchantsPanel({ }: object) {
                     {m.shopEmail && <div className="store-email">{m.shopEmail}</div>}
                   </td>
                   <td className="mono">{m.shopDomain}</td>
+                  <td>
+                    {m.connected
+                      ? <span style={{ color: 'var(--color-success)', fontWeight: 600, fontSize: 13 }}>✓ Connected</span>
+                      : <a
+                          href={`https://app.veroscale.xyz/api/auth/shopify?shop=${encodeURIComponent(m.shopDomain)}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="btn-outline"
+                          style={{ fontSize: 12, padding: '3px 10px' }}
+                        >
+                          Connect to Shopify →
+                        </a>
+                    }
+                  </td>
                   <td>
                     {m.totalCollections === 0
                       ? <span className="muted">—</span>
