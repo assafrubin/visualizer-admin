@@ -77,6 +77,20 @@ app.post('/api/merchants', requireAuth, async (req, res) => {
   }
 })
 
+app.patch('/api/merchants/:shop/token', requireAuth, async (req, res) => {
+  const shop = req.params['shop'] as string
+  try {
+    const upstream = await fetch(`${BACKOFFICE_URL}/api/internal/merchants/${encodeURIComponent(shop)}/token`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...backofficeHeaders() },
+      body: JSON.stringify(req.body),
+    })
+    res.status(upstream.status).json(await upstream.json())
+  } catch {
+    res.status(502).json({ error: 'Backoffice unavailable' })
+  }
+})
+
 app.delete('/api/merchants/:shop', requireAuth, async (req, res) => {
   const shop = req.params['shop'] as string
   try {

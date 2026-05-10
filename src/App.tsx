@@ -103,6 +103,10 @@ function MerchantsPanel({ }: object) {
   const [error, setError] = useState<string | null>(null)
   const [toggling, setToggling] = useState<Set<string>>(new Set())
   const [deleting, setDeleting] = useState<string | null>(null)
+  const [settingToken, setSettingToken] = useState<string | null>(null)
+  const [tokenInput, setTokenInput] = useState('')
+  const [savingToken, setSavingToken] = useState(false)
+  const [tokenError, setTokenError] = useState('')
   const [showAdd, setShowAdd] = useState(false)
   const [addDomain, setAddDomain] = useState('')
   const [addName, setAddName] = useState('')
@@ -167,6 +171,27 @@ function MerchantsPanel({ }: object) {
       setAddError('Could not reach server')
     } finally {
       setAdding(false)
+    }
+  }
+
+  async function saveToken(shopDomain: string) {
+    setSavingToken(true)
+    setTokenError('')
+    try {
+      const res = await fetch(`/api/merchants/${encodeURIComponent(shopDomain)}/token`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accessToken: tokenInput }),
+      })
+      const data = await res.json() as { error?: string }
+      if (!res.ok) { setTokenError(data.error ?? 'Failed to save token'); return }
+      setSettingToken(null)
+      setTokenInput('')
+      await load()
+    } catch {
+      setTokenError('Could not reach server')
+    } finally {
+      setSavingToken(false)
     }
   }
 
@@ -261,7 +286,33 @@ function MerchantsPanel({ }: object) {
                   <td>
                     {m.connected
                       ? <span style={{ color: 'var(--color-success)', fontWeight: 600, fontSize: 13 }}>✓ Connected</span>
-                      : <span style={{ color: 'var(--color-text-muted)', fontSize: 12 }}>Not connected</span>
+                      : settingToken === m.shopDomain
+                        ? (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 220 }}>
+                            <input
+                              className="login-input"
+                              placeholder="shpat_..."
+                              value={tokenInput}
+                              onChange={e => setTokenInput(e.target.value)}
+                              autoFocus
+                              style={{ fontSize: 12, padding: '4px 8px' }}
+                            />
+                            {tokenError && <span style={{ fontSize: 11, color: 'var(--color-error, #e53e3e)' }}>{tokenError}</span>}
+                            <div style={{ display: 'flex', gap: 4 }}>
+                              <button className="btn-outline" style={{ fontSize: 11, padding: '2px 8px' }} disabled={savingToken || !tokenInput.trim()} onClick={() => saveToken(m.shopDomain)}>
+                                {savingToken ? '…' : 'Save'}
+                              </button>
+                              <button className="btn-outline" style={{ fontSize: 11, padding: '2px 8px' }} onClick={() => { setSettingToken(null); setTokenInput(''); setTokenError('') }}>
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        )
+                        : (
+                          <button className="btn-outline" style={{ fontSize: 12, padding: '3px 10px' }} onClick={() => { setSettingToken(m.shopDomain); setTokenInput(''); setTokenError('') }}>
+                            Set access token
+                          </button>
+                        )
                     }
                   </td>
                   <td>
