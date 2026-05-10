@@ -101,6 +101,12 @@ function MerchantsPanel({ }: object) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [toggling, setToggling] = useState<Set<string>>(new Set())
+  const [showAdd, setShowAdd] = useState(false)
+  const [addDomain, setAddDomain] = useState('')
+  const [addName, setAddName] = useState('')
+  const [addEmail, setAddEmail] = useState('')
+  const [adding, setAdding] = useState(false)
+  const [addError, setAddError] = useState('')
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -138,12 +144,75 @@ function MerchantsPanel({ }: object) {
     }
   }
 
+  async function addMerchant(e: React.FormEvent) {
+    e.preventDefault()
+    setAdding(true)
+    setAddError('')
+    try {
+      const res = await fetch('/api/merchants', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ shopDomain: addDomain, shopName: addName || undefined, shopEmail: addEmail || undefined }),
+      })
+      const data = await res.json() as { error?: string }
+      if (!res.ok) { setAddError(data.error ?? 'Failed to add merchant'); return }
+      setShowAdd(false)
+      setAddDomain('')
+      setAddName('')
+      setAddEmail('')
+      await load()
+    } catch {
+      setAddError('Could not reach server')
+    } finally {
+      setAdding(false)
+    }
+  }
+
   return (
     <div>
       <div className="page-title-row">
         <h1 className="page-title">Merchants</h1>
-        <button className="btn-outline" onClick={load} disabled={loading}>↻ Refresh</button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn-outline" onClick={() => setShowAdd(v => !v)}>+ Add merchant</button>
+          <button className="btn-outline" onClick={load} disabled={loading}>↻ Refresh</button>
+        </div>
       </div>
+
+      {showAdd && (
+        <div className="card" style={{ marginBottom: 20 }}>
+          <h3 style={{ marginTop: 0, marginBottom: 12, fontSize: 14 }}>Add merchant</h3>
+          <form onSubmit={addMerchant} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <input
+              className="login-input"
+              placeholder="Shop domain (e.g. my-store.myshopify.com)"
+              value={addDomain}
+              onChange={e => setAddDomain(e.target.value)}
+              required
+              autoFocus
+            />
+            <input
+              className="login-input"
+              placeholder="Store name (optional)"
+              value={addName}
+              onChange={e => setAddName(e.target.value)}
+            />
+            <input
+              className="login-input"
+              placeholder="Email (optional)"
+              type="email"
+              value={addEmail}
+              onChange={e => setAddEmail(e.target.value)}
+            />
+            {addError && <p className="login-error" style={{ margin: 0 }}>{addError}</p>}
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button className="login-btn" type="submit" disabled={adding || !addDomain.trim()} style={{ flex: 1 }}>
+                {adding ? 'Adding…' : 'Add merchant'}
+              </button>
+              <button type="button" className="btn-outline" onClick={() => setShowAdd(false)}>Cancel</button>
+            </div>
+          </form>
+        </div>
+      )}
 
       {error && <div className="alert">{error}</div>}
 
