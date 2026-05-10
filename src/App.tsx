@@ -261,15 +261,7 @@ function MerchantsPanel({ }: object) {
                   <td>
                     {m.connected
                       ? <span style={{ color: 'var(--color-success)', fontWeight: 600, fontSize: 13 }}>✓ Connected</span>
-                      : <a
-                          href={`https://app.veroscale.xyz/api/auth/shopify?shop=${encodeURIComponent(m.shopDomain)}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="btn-outline"
-                          style={{ fontSize: 12, padding: '3px 10px' }}
-                        >
-                          Connect to Shopify →
-                        </a>
+                      : <span style={{ color: 'var(--color-text-muted)', fontSize: 12 }}>Not connected</span>
                     }
                   </td>
                   <td>
