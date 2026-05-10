@@ -1,4 +1,6 @@
 import 'dotenv/config'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import express from 'express'
 import session from 'express-session'
 
@@ -155,7 +157,89 @@ app.get('/api/asset-stats', requireAuth, async (req, res) => {
   }
 })
 
+// ─── User management ─────────────────────────────────────────────────────────
+
+app.get('/api/users', requireAuth, async (_req, res) => {
+  try {
+    const upstream = await fetch(`${BACKOFFICE_URL}/api/internal/users`, { headers: backofficeHeaders() })
+    res.status(upstream.status).json(await upstream.json())
+  } catch { res.status(502).json({ error: 'Backoffice unavailable' }) }
+})
+
+app.post('/api/users', requireAuth, async (req, res) => {
+  try {
+    const upstream = await fetch(`${BACKOFFICE_URL}/api/internal/users`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...backofficeHeaders() },
+      body: JSON.stringify(req.body),
+    })
+    res.status(upstream.status).json(await upstream.json())
+  } catch { res.status(502).json({ error: 'Backoffice unavailable' }) }
+})
+
+app.put('/api/users/:id/stores', requireAuth, async (req, res) => {
+  try {
+    const upstream = await fetch(`${BACKOFFICE_URL}/api/internal/users/${encodeURIComponent(req.params['id'] as string)}/stores`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', ...backofficeHeaders() },
+      body: JSON.stringify(req.body),
+    })
+    res.status(upstream.status).json(await upstream.json())
+  } catch { res.status(502).json({ error: 'Backoffice unavailable' }) }
+})
+
+app.post('/api/users/:id/resend-invite', requireAuth, async (req, res) => {
+  try {
+    const upstream = await fetch(`${BACKOFFICE_URL}/api/internal/users/${encodeURIComponent(req.params['id'] as string)}/resend-invite`, {
+      method: 'POST',
+      headers: { ...backofficeHeaders() },
+    })
+    res.status(upstream.status).json(await upstream.json())
+  } catch { res.status(502).json({ error: 'Backoffice unavailable' }) }
+})
+
+app.delete('/api/users/:id', requireAuth, async (req, res) => {
+  try {
+    const upstream = await fetch(`${BACKOFFICE_URL}/api/internal/users/${encodeURIComponent(req.params['id'] as string)}`, {
+      method: 'DELETE',
+      headers: { ...backofficeHeaders() },
+    })
+    res.status(upstream.status).json(await upstream.json())
+  } catch { res.status(502).json({ error: 'Backoffice unavailable' }) }
+})
+
+app.get('/api/merchants-list', requireAuth, async (_req, res) => {
+  try {
+    const upstream = await fetch(`${BACKOFFICE_URL}/api/internal/merchants`, { headers: backofficeHeaders() })
+    res.status(upstream.status).json(await upstream.json())
+  } catch { res.status(502).json({ error: 'Backoffice unavailable' }) }
+})
+
+// ─── Render timings ───────────────────────────────────────────────────────────
+
+app.get('/api/render-timings', requireAuth, async (req, res) => {
+  const since = req.query.since as string | undefined
+  const url = `${VISUALIZER_URL}/api/internal/render-timings${since ? `?since=${encodeURIComponent(since)}` : ''}`
+  try {
+    const upstream = await fetch(url, { headers: visualizerHeaders() })
+    res.status(upstream.status).json(await upstream.json())
+  } catch {
+    res.status(502).json({ error: 'Visualizer unavailable' })
+  }
+})
+
 // ─── Start ────────────────────────────────────────────────────────────────────
+
+// Production: serve the built React frontend.
+if (process.env.NODE_ENV === 'production') {
+  const __dirname = path.dirname(fileURLToPath(import.meta.url))
+  const DIST = path.resolve(__dirname, '../dist')
+  app.use(express.static(DIST))
+  app.get('*', (req, res) => {
+    if (req.path.startsWith('/api/')) { res.status(404).json({ error: 'Not found' }); return }
+    res.sendFile(path.join(DIST, 'index.html'))
+  })
+}
 
 app.listen(PORT, () => {
   console.info(`[admin] server listening on http://localhost:${PORT}`)
