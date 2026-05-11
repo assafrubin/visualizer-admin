@@ -11,6 +11,9 @@ interface Merchant {
   installedAt?: string
   enabledCollections: number
   totalCollections: number
+  monthlyRenderLimit: number | null
+  currentMonthRenders: number
+  currentMonth: string
 }
 
 interface ModelOption {
@@ -113,6 +116,9 @@ function MerchantsPanel({ }: object) {
   const [addEmail, setAddEmail] = useState('')
   const [adding, setAdding] = useState(false)
   const [addError, setAddError] = useState('')
+  const [editingLimit, setEditingLimit] = useState<string | null>(null)
+  const [limitInput, setLimitInput] = useState('')
+  const [savingLimit, setSavingLimit] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -171,6 +177,27 @@ function MerchantsPanel({ }: object) {
       setAddError('Could not reach server')
     } finally {
       setAdding(false)
+    }
+  }
+
+  async function saveLimit(shopDomain: string) {
+    setSavingLimit(true)
+    try {
+      const limit = limitInput.trim() === '' ? null : parseInt(limitInput, 10)
+      if (limitInput.trim() !== '' && (isNaN(limit!) || limit! < 0)) return
+      const res = await fetch(`/api/merchants/${encodeURIComponent(shopDomain)}/render-limit`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ limit }),
+      })
+      if (!res.ok) { setError('Failed to save render limit'); return }
+      setMerchants(prev => prev.map(m => m.shopDomain === shopDomain ? { ...m, monthlyRenderLimit: limit } : m))
+      setEditingLimit(null)
+      setLimitInput('')
+    } catch {
+      setError('Could not reach server')
+    } finally {
+      setSavingLimit(false)
     }
   }
 
@@ -270,6 +297,8 @@ function MerchantsPanel({ }: object) {
                 <th>Domain</th>
                 <th>Status</th>
                 <th>Collections</th>
+                <th>This month</th>
+                <th>Monthly limit</th>
                 <th>Installed</th>
                 <th>Widget</th>
                 <th></th>
@@ -320,6 +349,45 @@ function MerchantsPanel({ }: object) {
                       ? <span className="muted">—</span>
                       : <><strong>{m.enabledCollections}</strong> / {m.totalCollections} enabled</>
                     }
+                  </td>
+                  <td style={{ textAlign: 'right' }}>
+                    <strong>{m.currentMonthRenders.toLocaleString()}</strong>
+                    {m.monthlyRenderLimit !== null && (
+                      <span className="muted" style={{ fontSize: 11, marginLeft: 4 }}>
+                        ({Math.round((m.currentMonthRenders / m.monthlyRenderLimit) * 100)}%)
+                      </span>
+                    )}
+                    {m.monthlyRenderLimit !== null && m.currentMonthRenders >= m.monthlyRenderLimit && (
+                      <span style={{ marginLeft: 4, color: '#dc2626', fontWeight: 700, fontSize: 11 }}>LIMIT</span>
+                    )}
+                  </td>
+                  <td>
+                    {editingLimit === m.shopDomain ? (
+                      <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                        <input
+                          className="login-input"
+                          type="number"
+                          min="0"
+                          placeholder="No limit"
+                          value={limitInput}
+                          onChange={e => setLimitInput(e.target.value)}
+                          autoFocus
+                          style={{ fontSize: 12, padding: '3px 6px', width: 80 }}
+                        />
+                        <button className="btn-outline" style={{ fontSize: 11, padding: '2px 6px' }} disabled={savingLimit} onClick={() => saveLimit(m.shopDomain)}>
+                          {savingLimit ? '…' : 'Save'}
+                        </button>
+                        <button className="btn-outline" style={{ fontSize: 11, padding: '2px 6px' }} onClick={() => { setEditingLimit(null); setLimitInput('') }}>✕</button>
+                      </div>
+                    ) : (
+                      <button
+                        className="btn-outline"
+                        style={{ fontSize: 12, padding: '3px 8px' }}
+                        onClick={() => { setEditingLimit(m.shopDomain); setLimitInput(m.monthlyRenderLimit?.toString() ?? '') }}
+                      >
+                        {m.monthlyRenderLimit !== null ? m.monthlyRenderLimit.toLocaleString() : <span className="muted">Unlimited</span>}
+                      </button>
+                    )}
                   </td>
                   <td className="muted">
                     {m.installedAt ? new Date(m.installedAt).toLocaleDateString() : '—'}
